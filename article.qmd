@@ -1,0 +1,158 @@
+---
+title: "Poor Lighting & Speed: Injury Risk Rise cause on NSW Roads"
+author: "Enika Krishnasamy Panjalingam 48283282"
+format:
+  pdf:
+    pdf-engine: pdflatex
+---
+
+# Lighting & Speed: NSW Roads Turn Risky to ride
+
+Each year, thousands of drivers and passengers set out on NSW roads, to work, others for leisure -without realising how small shifts in time, light, or weather can change the odds of reaching home safely. Through the NSW Road Crash dataset, I explored how lighting conditions, speed limits, and time of day influence the chances that a crash leads to injury rather than a simple towaway.
+
+# Understanding the Data
+
+The dataset, published by the NSW Centre for Road Safety, records over 93,000 crashes with attributes such as severity, time of crash, lighting conditions, weather, and speed limits. Each record captures where, when, and how a crash happened - from the hour of day to the speed zone and lighting conditions. We cleaned the data to focus on the most interpretable fields, grouping crash severity into injury vs towaway outcomes.
+
+Because of its size and richness, a 10,000 record random sample was selected for this study to make exploration and modelling manageable within the assessment scope. This sample captures proportional representation across urban and rural regions, ensuring that the main trends remain visible.\
+However, sampling can slightly affect precision - rare crash types or less common road features (like fog related crashes) may be under-represented, so findings should be viewed as indicative rather than exhaustive.
+
+Variables such as Natural Lighting, Street Lighting, Weather, and Speed Limit were chosen because they directly relate to visibility and driver behaviour. A binary “injury flag” was created (1 = any injury; 0 = towaway).\
+Injury crashes – those involving serious, moderate, or minor injuries.\
+Towaway crashes – vehicle damage but no physical injuries.\
+Together, these variables tell a story about risk and environment, not just driver error.
+
+```{r}
+library(ggplot2)
+library(readr)
+library(dplyr)
+
+# Load directly from your work folder
+mdata <- read_csv("../work/nsw_crash_model.csv", show_col_types = FALSE)
+
+# Convert 0/1 injury flag to labels
+mdata <- mdata %>%
+  mutate(Outcome = ifelse(injury == 1, "Injury", "Towaway")) %>%
+  count(Outcome)
+
+# Simple pie chart
+ggplot(mdata, aes(x = "", y = n, fill = Outcome)) +
+  geom_col() +
+  coord_polar(theta = "y") +
+  theme_void() +
+  labs(title = "Crash Outcomes") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Handling Data Quality
+
+\
+Real-world datasets are messy. The crash data included:\
+Missing or ambiguous entries in lighting, weather, and speed-limit fields.\
+Mixed labels (e.g., “Dark – street lights on” vs “Street lights on”).\
+Inconsistent text capitalisation across some categorical variables.\
+To ensure accuracy:\
+All key variables were standardised to consistent factor labels (e.g., all lighting categories lower-cased).\
+Missing values were grouped as “Unknown” instead of being deleted, to preserve sample size.\
+Outliers in speed_limit were clipped at 110 km/h, matching the NSW maximum legal limit.\
+Numerical summaries and counts were checked against totals to confirm internal consistency.
+
+## Insights and Discoveries
+
+## When Do Crashes Happen?
+
+![](images/fig_crashes_by_time.png){fig-align="center" width="734"}
+
+Patterns in the data revealed clear peaks during the morning (7–9 AM) and evening (4–6 PM) commute hours. Out of roughly 93,000 recorded crashes, nearly one-third occurred within these narrow time windows. These spikes reflect not only higher traffic density but also the physiological and behavioural challenges that accompany commuting driver fatigue, distraction, and time pressure. During these hours, even minor lapses in attention can lead to collisions, particularly at intersections and merging lanes where decision-making is most demanding.
+
+Interestingly, late-night crashes, while far less frequent, were disproportionately severe. Reduced visibility, alcohol impairment, and slower emergency response times amplify risk after midnight. This contrast between frequency and severity underscores that road safety interventions cannot rely on raw crash counts alone. High-frequency, low-severity crashes demand congestion management and public awareness, while low-frequency, high-severity incidents call for targeted night patrols, lighting upgrades, and fatigue monitoring.
+
+From a risk management perspective, these findings reveal that temporal risk is dynamic, not constant throughout the day. Authorities could use this insight to implement time-sensitive policies — such as dynamic speed limits, adaptive traffic-light phasing during peak congestion, or public campaigns encouraging flexible work hours to spread commuter loads. For fleet operators and transport planners, recognising these temporal hotspots supports scheduling strategies that minimise exposure during peak-risk periods.
+
+In short, understanding when crashes happen is just as critical as knowing why they happen. It shifts the focus of safety management from static rules to data-informed timing, helping NSW move closer to its Vision Zero commitment of eliminating road fatalities.
+
+## Lighting Conditions
+
+![](images/fig_lighting.png){fig-align="center"}
+
+Lighting tells an equally powerful story. About 41 % of crashes occurred in daylight, while nearly 30 % happened in darkness or twilight, even though far fewer vehicles travel at night. This reveals how reduced visibility, glare, and fatigue amplify risk once light fades. On roads without working street lights, injury odds rise sharply—especially in rural corridors where higher speeds meet limited illumination. Drivers often overestimate safety on empty roads, reacting too late to hazards such as bends or animals.
+
+Global studies show that better lighting can cut night-time crashes by up to 30 %, making illumination upgrades a proven safety investment. Beyond infrastructure, behavioural countermeasures like reflective signage, headlight checks, and night-driving awareness campaigns can further reduce risk. Ultimately, darkness doesn’t cause crashes—but it magnifies every other vulnerability, reminding us that visibility is one of the most powerful tools in road-safety management.
+
+## Weather and Injury Share
+
+![](images/fig_weather_injury.png){fig-align="center" width="721"}
+
+While fine weather accounted for most crashes—simply because most travel happens in clear conditions—rain and fog were linked to a noticeably higher share of injuries. Even light rain reduces tyre grip, lengthens braking distance, and increases the likelihood of multi-vehicle collisions. The data shows that although only around 12 % of crashes occurred in wet conditions, nearly 18 % of all injury crashes took place during rain. This subtle yet important gap suggests that wet-road incidents, though less frequent, are more dangerous when they do occur. For road safety planning, this underscores the importance of surface maintenance, driver speed moderation, and public alerts during adverse weather, not just storm events.
+
+## 
+
+Quantifying Risk - Logistic Regression Model
+
+![](images/fig_odds_ratios.png){fig-align="center" width="693"}
+
+To move beyond description, a simple logistic regression model was fitted to estimate the odds of an injury crash versus a towaway.
+
+The analysis found that:\
+
+High-speed zones (100–110 km/h) were associated with 2.5–3 times higher injury odds compared with 50 km/h areas.\
+Crashes in darkness with no street lighting had 1.8 times higher odds than those in daylight.\
+Urban vs. non-urban differences were also clear rural roads carried greater injury risk, reflecting both higher speed and delayed emergency response times.\
+Weather effects were present but smaller and less consistent.\
+These results highlight how environmental factors, not just driver behaviour, shape the real outcomes of road incidents.\
+(95 % confidence intervals shown; an odds ratio \> 1 indicates increased injury odds.)
+
+| Comparison  | odds ratio | Interpretation |
+|----|----|----|
+| 50 km/h | 2.8x | Crashes on highways are far more likely to cause injury. |
+| Daylight | 1.9x | Poorly lit conditions nearly double the injury odds. |
+| Fine | 1.3x | Slightly higher risk, though less significant. |
+| Urban | 2.1x | Rural crashes tend to be more severe due to higher speeds and delayed help. |
+
+## Why It Matters
+
+This analysis isn’t just about numbers - it’s about how risk changes with context.\
+If darkness and high-speed zones increase injury risk, solutions are clear:\
+Better lighting infrastructure: Prioritise street-light upgrades on regional highways and rural intersections.\
+Public awareness: Run “Dusk Danger” campaigns reminding drivers that visibility and reaction time change rapidly during sunset.\
+Speed management: Reinforce speed enforcement in poor-visibility zones, not only on straight highways but also near curves and local access roads.\
+Data transparency: Continue publishing open crash data so future analysts can build on evidence, not assumption. By connecting data with human behaviour, we transform spreadsheets into stories that can save lives.
+
+## 
+
+Summary of key findings
+
+Lighting Conditions Matter - Most crashes occurred under daylight, yet night-time crashes with poor street lighting showed significantly higher injury rates.
+
+→ Implication: Road illumination standards in semi-urban and rural areas could be vital for reducing injury severity.
+
+Speed Limit Correlation - As speed limits increased from 50 km/h to 100 km/h, the proportion of injury crashes rose sharply.
+
+→ Implication: Reinforces evidence that higher-speed environments produce more severe outcomes even when crash counts fall.
+
+Urban vs Non-Urban Divide - While urban zones record more total crashes, non-urban roads have a higher percentage of serious or fatal outcomes.
+
+→ Implication: Emergency response times and road design in regional NSW are key priorities.
+
+Weather and Visibility Effects - The majority of crashes occurred in clear weather, but when combined with low lighting conditions, risk increased suggesting driver complacency plays a major role.
+
+Road Alignment - Curved roads and roundabouts, though less frequent, were associated with higher injury percentages compared to straight roads.
+
+→ Implication: Targeted signage and improved curve design could mitigate high-impact crashes.
+
+## Real world relevance
+
+Complacency under clear skies: Most crashes occurred when visibility was good, not poor. This challenges the public perception that bad weather is the main risk driver.
+
+Speed-linked injury gradient: A near-linear relationship between speed and injury rate emphasises why variable speed zones and school-area enforcement save lives.
+
+Geographic concentration: The top 10 LGAs (Sydney, Central Coast, Canterbury-Bankstown, etc.) accounted for a disproportionate share of total incidents, linking crashes closely to population density and traffic exposure.
+
+These insights support data-driven policymaking, for example, guiding Transport for NSW on where to prioritise lighting upgrades, speed enforcement, and public awareness campaigns.
+
+## Wrapping Up the Story
+
+This analysis of the NSW Road Crash dataset paints a clear picture: road safety is influenced as much by human behaviour and environmental context as by infrastructure. Crashes are most common in daylight and fair weather times when drivers feel safest but injury risk surges on unlit roads and at higher speed zones. Urban areas face the greatest crash volume, yet non-urban regions bear the heaviest toll in severity. These patterns reveal that safety awareness must extend beyond bad-weather caution to everyday vigilance.\
+The findings hold immediate relevance for both policymakers and the public. Better illumination along rural roads, targeted enforcement in speed-critical zones, and ongoing driver-education campaigns could meaningfully reduce injuries. Visualising data in this way transforms abstract numbers into real-world lessons each bar, percentage, and curve representing lives that can be protected through smarter design and informed decisions.\
+Looking forward, future research could integrate time-series crash data with traffic-density and weather-sensor feeds to forecast high-risk periods in real time. Combining predictive analytics with geospatial mapping would allow Transport for NSW to deploy adaptive speed warnings or lighting systems before accidents occur. As the technology behind connected vehicles matures, such data-driven interventions could form the backbone of a proactive, intelligent road-safety network.\
+Ultimately, this case study demonstrates how data is not just about counting crashes it’s about learning from them. Every insight points to a safer, more responsive road system where evidence, empathy, and engineering come together to save lives.
